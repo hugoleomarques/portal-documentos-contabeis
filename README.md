@@ -2,7 +2,8 @@
 
 > Sistema SaaS para automação completa da distribuição de documentos entre escritório de contabilidade e 500+ empresas clientes, com IA e conformidade LGPD.
 
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-14-black?logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react)](https://react.dev/)
 [![Node.js](https://img.shields.io/badge/Node.js-20-green?logo=node.js)](https://nodejs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![Azure](https://img.shields.io/badge/Azure-AI-0078D4?logo=microsoft-azure)](https://azure.microsoft.com/)
@@ -33,6 +34,20 @@ Sistema que **elimina 40 horas/semana** de trabalho manual através de:
 3. **Blob Storage** → Armazena arquivo criptografado (AES-256)
 4. **PostgreSQL** → Salva metadados e índices
 5. **Portal Web** → Cliente acessa com link seguro
+
+### Diagrama do Fluxo
+
+```mermaid
+graph TD
+    A[📂 Pasta Local Contabilidade] -->|Agente Monitoramento| B(☁️ Azure Blob Storage)
+    B -->|Trigger Automático| C{🧠 Azure AI OCR}
+    C -->|Extração Dados| D[🔍 Identifica CNPJ e Guia]
+    D -->|Sucesso| E[🗄️ Banco de Dados SQL]
+    D -->|Arquivo PDF| F[📂 Pasta do Cliente no Portal]
+    E -->|Notificação| G[📱 WhatsApp/Email Cliente]
+    H[👤 Cliente] -->|Login 2FA| I[💻 Portal Web]
+    I -->|Download| F
+```
 
 ---
 
@@ -77,7 +92,7 @@ Sistema que **elimina 40 horas/semana** de trabalho manual através de:
 | 📈 **Escalável** | Suporta 500+ empresas sem degradação |
 | 🔒 **Seguro** | Mesma infraestrutura usada por bancos |
 | 📊 **Métricas** | Dashboard com estatísticas em tempo real |
-| 💰 **ROI 1.500%** | Economia de 160h/mês × $20/hora = $3.200/mês |
+| 💰 **ROI 1.500%** | Economia de 160h/mês × R$30/hora = R$4.800/mês |
 
 ---
 
@@ -171,7 +186,7 @@ portal-documentos-contabeis/
 - **JWT** + Speakeasy (2FA)
 
 ### Frontend
-- **Next.js 15** + React 19
+- **Next.js 14** + React 18
 - **TypeScript**
 - **TailwindCSS** (dark theme)
 - **Zustand** (state)
@@ -214,17 +229,17 @@ portal-documentos-contabeis/
 
 | Serviço | Valor |
 |---------|-------|
-| App Service | $50-100 |
-| PostgreSQL | $30-50 |
-| Blob Storage (100GB) | $2-5 |
-| Azure AI (OCR) | $1.50/1000 páginas |
-| **Total** | **$100-200/mês** |
+| App Service | R$ 300-600 |
+| PostgreSQL | R$ 180-300 |
+| Blob Storage (100GB) | R$ 12-30 |
+| Azure AI (OCR) | R$ 9,00/1000 páginas |
+| **Total** | **R$ 600-1.200/mês** |
 
 ### Retorno sobre Investimento
 
 - **Economia de Tempo:** 160h/mês
-- **Valor/Hora:** $20
-- **Economia Mensal:** $3.200
+- **Valor/Hora:** R$ 30,00
+- **Economia Mensal:** R$ 4.800,00
 - **ROI:** **1.500%** 📈
 
 ---
