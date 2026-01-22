@@ -246,14 +246,23 @@ portal-documentos-contabeis/
 
 ## 📸 Screenshots
 
-### Login com 2FA
+### Área Administrativa (Souza Lemos)
+
+#### Login com 2FA
 ![Login](docs/images/login-preview.png)
 
-### Dashboard
+#### Dashboard
 ![Dashboard](docs/images/dashboard-preview.png)
 
-### Upload Drag & Drop
+#### Upload Drag & Drop
 ![Upload](docs/images/upload-preview.png)
+
+### Portal do Cliente
+
+#### Área do Cliente (Empresa 01)
+![Portal do Cliente](docs/images/client-portal-preview.png)
+
+*Visão da empresa cliente com acesso aos seus documentos, filtros por categoria/período, e download com protocolo digital.*
 
 ---
 
