@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// EMPRESAS (Clientes da Contabilidade)
+// ============================================
+model Empresa {
+  id            String   @id @default(uuid())
+  cnpj          String   @unique @db.VarChar(14) // Chave primária de negócio
+  razaoSocial   String   @db.VarChar(255)
+  nomeFantasia  String?  @db.VarChar(255)
+  email         String   @db.VarChar(255)
+  telefone      String?  @db.VarChar(20)
+  ativo         Boolean  @default(true)
+  
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  // Relacionamentos
+  usuarios      Usuario[]
+  documentos    Documento[]
+  consentimentos Consentimento[]
+  
+  @@index([cnpj])
+  @@index([ativo])
+  @@map("empresas")
+}
+
+// ============================================
+// USUÁRIOS (Multi-tenant)
+// ============================================
+enum TipoUsuario {
+  ADMIN_CONTABILIDADE  // Acesso total
+  SOCIO                // Vê todos os documentos da empresa
+  RH                   // Vê apenas DP
+  FUNCIONARIO          // Vê apenas seus próprios documentos
+}
+
+model Usuario {
+  id            String      @id @default(uuid())
+  email         String      @unique @db.VarChar(255)
+  senha         String      @db.VarChar(255) // Hash bcrypt
+  nome          String      @db.VarChar(255)
+  cpf           String?     @unique @db.VarChar(11)
+  tipo          TipoUsuario
+  
+  // 2FA
+  twoFactorSecret String?   @db.VarChar(255)
+  twoFactorEnabled Boolean  @default(false)
+  
+  // Relacionamento com empresa (null para admin da contabilidade)
+  empresaId     String?
+  empresa       Empresa?    @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  
+  ativo         Boolean     @default(true)
+  ultimoLogin   DateTime?
+  
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  
+  // Relacionamentos
+  logs          Log[]
+  protocolos    Protocolo[]
+  consentimentos Consentimento[]
+  
+  @@index([email])
+  @@index([empresaId])
+  @@index([tipo])
+  @@map("usuarios")
+}
+
+// ============================================
+// DOCUMENTOS
+// ============================================
+enum CategoriaDocumento {
+  FISCAL
+  CONTABIL
+  DP
+  CERTIDOES
+  OUTROS
+}
+
+enum StatusDocumento {
+  PROCESSANDO      // Upload em andamento
+  DISPONIVEL       // Pronto para visualização
+  VISUALIZADO      // Cliente já abriu
+  ERRO_PROCESSAMENTO // Falha no OCR
+}
+
+model Documento {
+  id              String             @id @default(uuid())
+  nomeOriginal    String             @db.VarChar(255)
+  nomeArquivo     String             @db.VarChar(255) // Nome após renomeação automática
+  categoria       CategoriaDocumento
+  status          StatusDocumento    @default(PROCESSANDO)
+  
+  // Metadados do arquivo
+  tamanhoBytes    BigInt
+  mimeType        String             @db.VarChar(100)
+  hashSHA256      String             @db.VarChar(64) // Para integridade
+  
+  // Storage
+  blobUrl         String             @db.Text // URL no Azure Blob Storage
+  criptografado   Boolean            @default(true)
+  
+  // OCR
+  cnpjDetectado   String?            @db.VarChar(14)
+  confiancaOCR    Float?             // 0.0 a 1.0
+  textoExtraido   String?            @db.Text
+  
+  // Relacionamento
+  empresaId       String
+  empresa         Empresa            @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  
+  // Controle
+  dataVencimento  DateTime?          // Para guias de impostos
+  uploadPor       String?            @db.VarChar(255) // Nome do usuário admin
+  
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  
+  // Relacionamentos
+  protocolos      Protocolo[]
+  
+  @@index([empresaId])
+  @@index([categoria])
+  @@index([status])
+  @@index([dataVencimento])
+  @@index([createdAt])
+  @@map("documentos")
+}
+
+// ============================================
+// PROTOCOLOS DE RECEBIMENTO (LGPD)
+// ============================================
+model Protocolo {
+  id              String    @id @default(uuid())
+  
+  // Relacionamentos
+  documentoId     String
+  documento       Documento @relation(fields: [documentoId], references: [id], onDelete: Cascade)
+  
+  usuarioId       String
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  // Dados do protocolo
+  acao            String    @db.VarChar(50) // "DOWNLOAD", "VISUALIZACAO"
+  ipAddress       String    @db.VarChar(45) // IPv4 ou IPv6
+  userAgent       String    @db.Text
+  
+  // Hash do arquivo no momento do download (prova de integridade)
+  hashArquivo     String    @db.VarChar(64)
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([documentoId])
+  @@index([usuarioId])
+  @@index([createdAt])
+  @@map("protocolos")
+}
+
+// ============================================
+// LOGS DE AUDITORIA (LGPD - Inalterável)
+// ============================================
+enum TipoAcao {
+  LOGIN
+  LOGOUT
+  UPLOAD_DOCUMENTO
+  DOWNLOAD_DOCUMENTO
+  VISUALIZACAO_DOCUMENTO
+  EXCLUSAO_DOCUMENTO
+  CADASTRO_EMPRESA
+  EDICAO_EMPRESA
+  EXCLUSAO_EMPRESA
+  CADASTRO_USUARIO
+  EDICAO_USUARIO
+  EXCLUSAO_USUARIO
+  ACESSO_LOGS
+  EXPORTACAO_DADOS
+}
+
+model Log {
+  id              String    @id @default(uuid())
+  
+  // Quem fez a ação
+  usuarioId       String?
+  usuario         Usuario?  @relation(fields: [usuarioId], references: [id], onDelete: SetNull)
+  
+  // O que foi feito
+  acao            TipoAcao
+  descricao       String    @db.Text
+  recurso         String?   @db.VarChar(255) // Ex: "Documento ID: xxx"
+  
+  // Contexto
+  ipAddress       String    @db.VarChar(45)
+  userAgent       String    @db.Text
+  
+  // Resultado
+  sucesso         Boolean   @default(true)
+  mensagemErro    String?   @db.Text
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([usuarioId])
+  @@index([acao])
+  @@index([createdAt])
+  @@index([sucesso])
+  @@map("logs")
+}
+
+// ============================================
+// CONSENTIMENTOS LGPD
+// ============================================
+model Consentimento {
+  id              String    @id @default(uuid())
+  
+  // Relacionamentos
+  usuarioId       String
+  usuario         Usuario   @relation(fields: [usuarioId], references: [id], onDelete: Cascade)
+  
+  empresaId       String
+  empresa         Empresa   @relation(fields: [empresaId], references: [id], onDelete: Cascade)
+  
+  // Dados do consentimento
+  versaoTermos    String    @db.VarChar(20) // Ex: "1.0", "2.0"
+  aceito          Boolean   @default(true)
+  ipAddress       String    @db.VarChar(45)
+  
+  createdAt       DateTime  @default(now())
+  
+  @@index([usuarioId])
+  @@index([empresaId])
+  @@index([createdAt])
+  @@map("consentimentos")
+}
